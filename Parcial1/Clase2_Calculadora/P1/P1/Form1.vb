@@ -8,12 +8,11 @@ Public Class Form1
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Me.Text = "Calculadora"
-        Me.Size = New Size(320, 480)
+        Me.Size = New Size(320, 540)
         Me.FormBorderStyle = FormBorderStyle.FixedSingle
         Me.MaximizeBox = False
         Me.BackColor = Color.White
         Me.StartPosition = FormStartPosition.CenterScreen
-
         BuildUI()
     End Sub
 
@@ -54,12 +53,18 @@ Public Class Form1
         sep.Location = New Point(12, 85)
         Me.Controls.Add(sep)
 
+        ' Fila 0: AC  ( )  ⌫  xʸ
+        ' Fila 1:  7   8   9   ÷
+        ' Fila 2:  4   5   6   ×
+        ' Fila 3:  1   2   3   −
+        ' Fila 4:  0   .   √   +
+        ' Fila 5:  =  (span 4)
         Dim buttons As String(,) = {
-            {"AC", "0", "0"}, {"(", "1", "0"}, {")", "2", "0"}, {"⌫", "3", "0"},
+            {"AC", "0", "0"}, {"( )", "1", "0"}, {"⌫", "2", "0"}, {"xʸ", "3", "0"},
             {"7", "0", "1"}, {"8", "1", "1"}, {"9", "2", "1"}, {"÷", "3", "1"},
             {"4", "0", "2"}, {"5", "1", "2"}, {"6", "2", "2"}, {"×", "3", "2"},
             {"1", "0", "3"}, {"2", "1", "3"}, {"3", "2", "3"}, {"−", "3", "3"},
-            {"0", "0", "4"}, {".", "1", "4"}, {"=", "2", "4"}, {"+", "3", "4"}
+            {"0", "0", "4"}, {".", "1", "4"}, {"√", "2", "4"}, {"+", "3", "4"}
         }
 
         Dim btnW As Integer = 62
@@ -77,26 +82,24 @@ Public Class Form1
             btn.Text = lbl
             btn.Size = New Size(btnW, btnH)
             btn.Location = New Point(startX + col * (btnW + gap), startY + row * (btnH + gap))
-            btn.Font = New Font("Segoe UI", 14, FontStyle.Regular)
             btn.FlatStyle = FlatStyle.Flat
             btn.FlatAppearance.BorderSize = 1
             btn.Cursor = Cursors.Hand
             btn.Tag = lbl
 
             Select Case lbl
-                Case "="
-                    ' Único botón con fondo azul marino
-                    btn.BackColor = AzulMarino
-                    btn.ForeColor = Blanco
-                    btn.FlatAppearance.BorderColor = AzulMarino
-                    btn.Font = New Font("Segoe UI", 18, FontStyle.Bold)
-                Case "AC", "⌫", "(", ")", "÷", "×", "−", "+"
-                    ' Operadores y especiales: fondo blanco, texto y borde azul marino
+                Case "AC", "⌫", "( )", "÷", "×", "−", "+"
+                    btn.Font = New Font("Segoe UI", 14, FontStyle.Regular)
                     btn.BackColor = Blanco
                     btn.ForeColor = AzulMarino
                     btn.FlatAppearance.BorderColor = AzulMarino
+                Case "xʸ", "√"
+                    btn.Font = New Font("Segoe UI", 13, FontStyle.Regular)
+                    btn.BackColor = AzulClaro
+                    btn.ForeColor = AzulMarino
+                    btn.FlatAppearance.BorderColor = AzulMarino
                 Case Else
-                    ' Números: todo blanco con borde gris suave
+                    btn.Font = New Font("Segoe UI", 14, FontStyle.Regular)
                     btn.BackColor = Blanco
                     btn.ForeColor = AzulMarino
                     btn.FlatAppearance.BorderColor = Color.FromArgb(200, 200, 200)
@@ -105,6 +108,22 @@ Public Class Form1
             AddHandler btn.Click, AddressOf ButtonClick
             Me.Controls.Add(btn)
         Next
+
+        ' Botón = ocupa todo el ancho
+        Dim btnEq As New Button()
+        btnEq.Text = "="
+        btnEq.Size = New Size(btnW * 4 + gap * 3, btnH)
+        btnEq.Location = New Point(startX, startY + 5 * (btnH + gap))
+        btnEq.Font = New Font("Segoe UI", 18, FontStyle.Bold)
+        btnEq.FlatStyle = FlatStyle.Flat
+        btnEq.FlatAppearance.BorderSize = 1
+        btnEq.BackColor = AzulMarino
+        btnEq.ForeColor = Blanco
+        btnEq.FlatAppearance.BorderColor = AzulMarino
+        btnEq.Cursor = Cursors.Hand
+        btnEq.Tag = "="
+        AddHandler btnEq.Click, AddressOf ButtonClick
+        Me.Controls.Add(btnEq)
     End Sub
 
     Private Sub ButtonClick(sender As Object, e As EventArgs)
@@ -120,6 +139,7 @@ Public Class Form1
             Case "-"c : ProcessInput("−")
             Case "*"c : ProcessInput("×")
             Case "/"c : ProcessInput("÷")
+            Case "^"c : ProcessInput("^")
             Case "("c : ProcessInput("(")
             Case ")"c : ProcessInput(")")
             Case Chr(13) : ProcessInput("=")
@@ -130,8 +150,23 @@ Public Class Form1
         MyBase.OnKeyPress(e)
     End Sub
 
+    ' ---------------------------------------------------------------
+    '  Helpers
+    ' ---------------------------------------------------------------
+    Private Function IsOperatorChar(c As Char) As Boolean
+        Return "+-×÷^".IndexOf(c) >= 0
+    End Function
+
+    Private Function IsDigitOrClose(c As Char) As Boolean
+        Return Char.IsDigit(c) OrElse c = ")"c
+    End Function
+
+    ' ---------------------------------------------------------------
+    '  Procesamiento de entrada
+    ' ---------------------------------------------------------------
     Private Sub ProcessInput(input As String)
         Select Case input
+
             Case "AC"
                 expression = ""
                 txtExpr.Text = ""
@@ -148,32 +183,32 @@ Public Class Form1
             Case "="
                 Calculate()
 
-            Case "+", "−", "×", "÷"
-                justCalculated = False
-                If expression = "" AndAlso input = "−" Then
-                    expression = "−"
-                ElseIf expression <> "" Then
-                    Dim last As Char = expression(expression.Length - 1)
-                    If "+-×÷".IndexOf(last) >= 0 Then
-                        expression = expression.Substring(0, expression.Length - 1) & input
-                    ElseIf last <> "("c Then
-                        expression &= input
-                    End If
-                End If
-                UpdateDisplay()
-
-            Case "("
+            ' ----- Potencia -----
+            Case "^"
                 justCalculated = False
                 If expression <> "" Then
                     Dim last As Char = expression(expression.Length - 1)
-                    If Char.IsDigit(last) OrElse last = ")"c Then
+                    If IsDigitOrClose(last) Then
+                        expression &= "^"
+                    End If
+                End If
+                UpdateDisplay()
+
+            ' ----- Raíz cuadrada -----
+            Case "√"
+                justCalculated = False
+                If expression <> "" Then
+                    Dim last As Char = expression(expression.Length - 1)
+                    ' Paréntesis implícito: 3√( → 3×√(
+                    If IsDigitOrClose(last) Then
                         expression &= "×"
                     End If
                 End If
-                expression &= "("
+                expression &= "√("
                 UpdateDisplay()
 
-            Case ")"
+            ' ----- Botón ( ) inteligente -----
+            Case "( )"
                 justCalculated = False
                 Dim openCount As Integer = 0
                 Dim closeCount As Integer = 0
@@ -181,35 +216,88 @@ Public Class Form1
                     If c = "("c Then openCount += 1
                     If c = ")"c Then closeCount += 1
                 Next
+
                 If openCount > closeCount AndAlso expression.Length > 0 Then
                     Dim last As Char = expression(expression.Length - 1)
-                    If Char.IsDigit(last) OrElse last = ")"c Then
+                    If IsDigitOrClose(last) Then
+                        ' Cerrar paréntesis pendiente
                         expression &= ")"
+                    Else
+                        ' Después de operador → abrir nuevo
+                        expression &= "("
+                    End If
+                Else
+                    ' No hay pendientes → abrir, con × implícito si hace falta
+                    If expression <> "" Then
+                        Dim last As Char = expression(expression.Length - 1)
+                        If IsDigitOrClose(last) Then expression &= "×"
+                    End If
+                    expression &= "("
+                End If
+                UpdateDisplay()
+
+            ' ----- Paréntesis individuales (teclado) -----
+            Case "("
+                justCalculated = False
+                If expression <> "" Then
+                    Dim last As Char = expression(expression.Length - 1)
+                    If IsDigitOrClose(last) Then expression &= "×"
+                End If
+                expression &= "("
+                UpdateDisplay()
+
+            Case ")"
+                justCalculated = False
+                Dim openC As Integer = 0
+                Dim closeC As Integer = 0
+                For Each c As Char In expression
+                    If c = "("c Then openC += 1
+                    If c = ")"c Then closeC += 1
+                Next
+                If openC > closeC AndAlso expression.Length > 0 Then
+                    Dim last As Char = expression(expression.Length - 1)
+                    If IsDigitOrClose(last) Then expression &= ")"
+                End If
+                UpdateDisplay()
+
+            ' ----- Operadores +  −  ×  ÷ -----
+            Case "+", "−", "×", "÷"
+                justCalculated = False
+                If expression = "" AndAlso input = "−" Then
+                    expression = "−"
+                ElseIf expression <> "" Then
+                    Dim last As Char = expression(expression.Length - 1)
+                    If IsOperatorChar(last) Then
+                        ' Reemplazar operador anterior (excepto −  negativo)
+                        expression = expression.Substring(0, expression.Length - 1) & input
+                    ElseIf last <> "("c Then
+                        expression &= input
                     End If
                 End If
                 UpdateDisplay()
 
+            ' ----- Punto decimal -----
             Case "."
                 justCalculated = False
                 If expression = "" Then
                     expression = "0."
                 Else
                     Dim last As Char = expression(expression.Length - 1)
-                    If "+-×÷(".IndexOf(last) >= 0 Then
+                    If IsOperatorChar(last) OrElse last = "("c Then
                         expression &= "0."
                     ElseIf last <> "."c Then
+                        ' Verificar que el número actual no tenga ya punto
                         Dim numStart As Integer = expression.Length - 1
-                        While numStart > 0 AndAlso (Char.IsDigit(expression(numStart - 1)))
+                        While numStart > 0 AndAlso Char.IsDigit(expression(numStart - 1))
                             numStart -= 1
                         End While
                         Dim currentNum As String = expression.Substring(numStart)
-                        If Not currentNum.Contains(".") Then
-                            expression &= "."
-                        End If
+                        If Not currentNum.Contains(".") Then expression &= "."
                     End If
                 End If
                 UpdateDisplay()
 
+                ' ----- Dígitos -----
             Case Else
                 If justCalculated Then
                     expression = ""
@@ -217,9 +305,13 @@ Public Class Form1
                 End If
                 expression &= input
                 UpdateDisplay()
+
         End Select
     End Sub
 
+    ' ---------------------------------------------------------------
+    '  Actualizar pantalla en tiempo real
+    ' ---------------------------------------------------------------
     Private Sub UpdateDisplay()
         txtExpr.Text = expression
         If expression = "" Then
@@ -234,16 +326,20 @@ Public Class Form1
         End Try
     End Sub
 
+    ' ---------------------------------------------------------------
+    '  Calcular al pulsar =
+    ' ---------------------------------------------------------------
     Private Sub Calculate()
         If expression = "" Then Return
         Try
+            ' Cerrar paréntesis pendientes
             Dim openCount As Integer = 0
             Dim closeCount As Integer = 0
             For Each c As Char In expression
                 If c = "("c Then openCount += 1
                 If c = ")"c Then closeCount += 1
             Next
-            Dim fullExpr As String = expression & New String(")"c, openCount - closeCount)
+            Dim fullExpr As String = expression & New String(")"c, Math.Max(0, openCount - closeCount))
 
             Dim result As Double = EvaluateExpression(fullExpr)
             If Double.IsInfinity(result) Then
@@ -267,25 +363,34 @@ Public Class Form1
         End If
     End Function
 
+    ' ===============================================================
+    '  PARSER  (recursive-descent)
+    '  Precedencia: + −  <  × ÷  <  ^ (derecha)  <  unario  <  ()  √
+    ' ===============================================================
     Private evalPos As Integer
     Private evalExpr As String
 
     Private Function EvaluateExpression(expr As String) As Double
-        evalExpr = expr.Replace("×", "*").Replace("÷", "/").Replace("−", "-")
+        ' Normalizar operadores a ASCII
+        evalExpr = expr _
+            .Replace("×", "*") _
+            .Replace("÷", "/") _
+            .Replace("−", "-")
         evalPos = 0
-        Return ParseExpr()
+        Return ParseAddSub()
     End Function
 
-    Private Function ParseExpr() As Double
-        Dim result As Double = ParseTerm()
+    ' Nivel 1: suma y resta
+    Private Function ParseAddSub() As Double
+        Dim result As Double = ParseMulDiv()
         While evalPos < evalExpr.Length
             Dim c As Char = evalExpr(evalPos)
             If c = "+"c Then
                 evalPos += 1
-                result += ParseTerm()
+                result += ParseMulDiv()
             ElseIf c = "-"c Then
                 evalPos += 1
-                result -= ParseTerm()
+                result -= ParseMulDiv()
             Else
                 Exit While
             End If
@@ -293,16 +398,17 @@ Public Class Form1
         Return result
     End Function
 
-    Private Function ParseTerm() As Double
-        Dim result As Double = ParseFactor()
+    ' Nivel 2: multiplicación y división
+    Private Function ParseMulDiv() As Double
+        Dim result As Double = ParsePow()
         While evalPos < evalExpr.Length
             Dim c As Char = evalExpr(evalPos)
             If c = "*"c Then
                 evalPos += 1
-                result *= ParseFactor()
+                result *= ParsePow()
             ElseIf c = "/"c Then
                 evalPos += 1
-                Dim divisor As Double = ParseFactor()
+                Dim divisor As Double = ParsePow()
                 result /= divisor
             Else
                 Exit While
@@ -311,28 +417,59 @@ Public Class Form1
         Return result
     End Function
 
-    Private Function ParseFactor() As Double
+    ' Nivel 3: potencia (asociativa por la derecha: 2^3^2 = 2^(3^2))
+    Private Function ParsePow() As Double
+        Dim base As Double = ParseUnary()
+        If evalPos < evalExpr.Length AndAlso evalExpr(evalPos) = "^"c Then
+            evalPos += 1
+            Dim exp As Double = ParsePow()   ' recursión derecha
+            Return Math.Pow(base, exp)
+        End If
+        Return base
+    End Function
+
+    ' Nivel 4: signo unario
+    Private Function ParseUnary() As Double
+        If evalPos < evalExpr.Length Then
+            Dim c As Char = evalExpr(evalPos)
+            If c = "-"c Then
+                evalPos += 1
+                Return -ParsePrimary()
+            ElseIf c = "+"c Then
+                evalPos += 1
+            End If
+        End If
+        Return ParsePrimary()
+    End Function
+
+    ' Nivel 5: número, paréntesis, √(
+    Private Function ParsePrimary() As Double
         If evalPos >= evalExpr.Length Then Throw New Exception("Expresión inválida")
 
         Dim c As Char = evalExpr(evalPos)
 
+        ' Paréntesis
         If c = "("c Then
             evalPos += 1
-            Dim result As Double = ParseExpr()
+            Dim result As Double = ParseAddSub()
             If evalPos < evalExpr.Length AndAlso evalExpr(evalPos) = ")"c Then
                 evalPos += 1
             End If
             Return result
         End If
 
-        Dim sign As Double = 1
-        If c = "-"c Then
-            sign = -1
-            evalPos += 1
-        ElseIf c = "+"c Then
-            evalPos += 1
+        ' Raíz cuadrada: √(expr)
+        If evalExpr.Length - evalPos >= 2 AndAlso
+           evalExpr(evalPos) = "√"c AndAlso evalExpr(evalPos + 1) = "("c Then
+            evalPos += 2          ' saltar √(
+            Dim inner As Double = ParseAddSub()
+            If evalPos < evalExpr.Length AndAlso evalExpr(evalPos) = ")"c Then
+                evalPos += 1
+            End If
+            Return Math.Sqrt(inner)
         End If
 
+        ' Número
         Dim numStr As String = ""
         While evalPos < evalExpr.Length AndAlso
               (Char.IsDigit(evalExpr(evalPos)) OrElse evalExpr(evalPos) = "."c)
@@ -341,7 +478,7 @@ Public Class Form1
         End While
 
         If numStr = "" Then Throw New Exception("Se esperaba un número")
-        Return sign * Double.Parse(numStr, System.Globalization.CultureInfo.InvariantCulture)
+        Return Double.Parse(numStr, System.Globalization.CultureInfo.InvariantCulture)
     End Function
 
 End Class
